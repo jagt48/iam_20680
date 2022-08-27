@@ -1,0 +1,22 @@
+# Prerequisites
+*.d
+
+# Object files
+*.o
+*.obj
+*.elf
+
+# Linker output
+*.map
+
+# Executables
+*.exe
+*.out
+*.app
+*.hex
+
+# VS Code folder
+.vscode/
+
+# Vim tags
+tags
