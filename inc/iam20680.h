@@ -144,7 +144,7 @@ struct iam20680_settings {
 struct iam20680_dev {
     iam20680_read_fptr_typedef read;    /*< Read function pointer */
     iam20680_write_fptr_typedef write;  /*< Write function pointer */
-    iam20680_settings settings;         /*< Sensor settings */
+    struct iam20680_settings settings;         /*< Sensor settings */
     uint8_t status;                     /*< Returned status of read/write functions */
 };
 
