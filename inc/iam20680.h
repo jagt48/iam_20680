@@ -88,6 +88,10 @@ extern "C" {
 /**\name Who Am I */
 #define IAM20680_CHIP_ID    0xA9
 
+/**\name Interface */
+#define IAM20680_SPI    0x00
+#define IAM20680_I2C    0x01
+
 /*****************************************************************************
  * TYPEDEFS
  ****************************************************************************/ 
@@ -144,6 +148,7 @@ struct iam20680_settings {
 struct iam20680_dev {
     iam20680_read_fptr_typedef read;    /*< Read function pointer */
     iam20680_write_fptr_typedef write;  /*< Write function pointer */
+    uint8_t interface;                  /*< Interface type (I2C, SPI) */
     struct iam20680_settings settings;         /*< Sensor settings */
     uint8_t status;                     /*< Returned status of read/write functions */
 };

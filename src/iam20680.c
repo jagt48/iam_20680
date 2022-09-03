@@ -25,6 +25,10 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     uint8_t chip_id;
     uint8_t buff;
 
+    // Reset device to defaults.
+    buff = 0x80;
+    status = iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+
     // Check chip ID to ensure IAM-20680 exists on board.
     status = iam20680_read_regs((uint8_t)IAM20680_WHO_AM_I, &chip_id, 1, dev);
 
@@ -33,17 +37,25 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
 
     // Output data rate selection.
-
+    // SAMPLE_RATE = INTERNAL_SAMPLE_RATE/(1 + SMPLRT_DIV), INTERNAL_SAMPLE_RATE = 1 kHz
+    buff = 0x09;    // 100 Hz sample rate
+    status |= iam20680_write_regs((uint8_t)IAM20680_SMPLRT_DIV, &buff, 1, dev);
 
     // Full scale range selection.
-
+    buff = 0x01; // Acceleromter = 4 g
+    status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG, &buff, 1, dev);
+    
+    buff = 0x01; // Gyrometer = 500 dps
+    status |= iam20680_write_regs((uint8_t)IAM20680_GYRO_CONFIG, &buff, 1, dev);
 
     // Filter frequency selection.
-
+    buff = 0x05; // 10.2 Hz 
+    status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG, &buff, 1, dev);
 
     // Power mode selection.
-
-
+    buff = 0x3F; // Acceleromter and gyrometer x, y, and z enabled
+    status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_2, &buff, 1, dev);
+  
     return status;
 }
 
