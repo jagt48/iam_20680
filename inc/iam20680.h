@@ -151,6 +151,7 @@ struct iam20680_dev {
     uint8_t interface;                  /*< Interface type (I2C, SPI) */
     struct iam20680_settings settings;         /*< Sensor settings */
     uint8_t status;                     /*< Returned status of read/write functions */
+    uint8_t chip_id;                    /*< Chip ID */
 };
 
 
@@ -178,6 +179,28 @@ struct iam20680_dev {
  * @retval Non-zero -> Fail
  */
 uint8_t iam20680_init(struct iam20680_dev *dev);
+
+/**
+ * \ingroup iam20680
+ * \defgroup iam20680ApiInit2 Initialization
+ * @brief Initialize the sensor and device structure
+ */
+
+/*!
+ * \ingroup iam20680ApiInit2
+ * \page iam20680_api_iam20680_init2 iam20680_init2
+ * \code
+ * uint8_t iam20680_init2(struct iam20680_dev *dev);
+ * \endcode
+ * @details This API must be called before other APIs. It verifies the chip ID of the sensor.
+ * 
+ * @param[in, out] dev : Structure Instance of iam20680_dev
+ * @return Result of API execution status.
+ *
+ * @retval 0 -> Success
+ * @retval Non-zero -> Fail
+ */
+uint8_t iam20680_init2(struct iam20680_dev *dev);
 
 /**
  * \ingroup iam20680
