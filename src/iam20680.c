@@ -34,10 +34,10 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
 
     // Configure int pin as data ready.
     buff = 0x00;
-    status |= iam20680_read_regs((uint8_t)IAM20680_INT_PIN_CFG, &buff, 1, dev);
+    status |= iam20680_read_regs((uint8_t)IAM20680_INT_ENABLE, &buff, 1, dev);
     buff &= ~0x01;
     buff |= 1 << 0; // DATA_RDY_INT_EN
-    status |= iam20680_write_regs((uint8_t)IAM20680_INT_PIN_CFG, &buff, 1, dev);
+    status |= iam20680_write_regs((uint8_t)IAM20680_INT_ENABLE, &buff, 1, dev);
     
    
     // Set gyro low noise mode.
@@ -55,7 +55,7 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
     
     // Wait 20 ms.
-    for(uint32_t i = 0; i < 1000000; i++);  // >>> 20 ms
+    iam20680_delay_ms(20, dev);
 
     // Bypass gyro DLPF.
     buff = 0x00;
@@ -85,7 +85,7 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG2, &buff, 1, dev);
 
     // Set averaging filter.
-    // Gryo
+    // Gyro
     buff = 0x00;
     status |= iam20680_read_regs((uint8_t)IAM20680_LP_MODE_CFG, &buff, 1, dev);
     buff &= ~0x70;
@@ -98,17 +98,25 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     buff |= 0 << 4;     // DEC2_CFG
     status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG2, &buff, 1, dev);
     
-    // Set SMPRT_DIV.
-    buff = 20000/1000 - 1;  // 20 ms / 50 Hz
-    status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG2, &buff, 1, dev);
-    
+    // Set SMPLRT_DIV.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_SMPLRT_DIV, &buff, 1, dev);
+    buff = 0x09;  // 10 ms / 100 Hz
+    status |= iam20680_write_regs((uint8_t)IAM20680_SMPLRT_DIV, &buff, 1, dev);
+
+    // Disable accel and gyro all axes.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_2, &buff, 1, dev);
+    buff |= 0x3F;
+    status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_2, &buff, 1, dev);
+
     // Set full scale range.
     // Gyro
     buff = 0x00;
     status |= iam20680_read_regs((uint8_t)IAM20680_GYRO_CONFIG, &buff, 1, dev);
     buff &= ~0x18;
-    buff |= 3 << 3;     // FS_SEL 
-    status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG, &buff, 1, dev);
+    buff |= 1 << 3;     // FS_SEL 
+    status |= iam20680_write_regs((uint8_t)IAM20680_GYRO_CONFIG, &buff, 1, dev);
     // Accel
     buff = 0x00;
     status |= iam20680_read_regs((uint8_t)IAM20680_ACCEL_CONFIG, &buff, 1, dev);
@@ -122,8 +130,7 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     buff &= ~0x38;
     buff |= 0 << 3;     // Enable x, y, and z.
     status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_2, &buff, 1, dev);
-    for(uint32_t i = 0; i < 1000000; i++);  // >>> 20 ms
-    
+    iam20680_delay_ms(20, dev);    
 
     // Enable gyro.
     buff = 0x00;
@@ -131,8 +138,8 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     buff &= ~0x07;
     buff |= 0 << 0;     // Enable x, y, and z.
     status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_2, &buff, 1, dev);
-    for(uint32_t i = 0; i < 1000000; i++);  // >>> 50 ms
-    
+    iam20680_delay_ms(50, dev); 
+
     // Reset and enable FIFO.
     // Disable FIFO
     buff = 0x00;
@@ -144,7 +151,7 @@ uint8_t iam20680_init(struct iam20680_dev *dev)
     buff = 0x00;
     status |= iam20680_read_regs((uint8_t)IAM20680_USER_CTRL, &buff, 1, dev);
     buff &= ~0x04;
-    buff |= 0 << 2;     // FIFO_RST
+    buff |= 1 << 2;     // FIFO_RST
     status |= iam20680_write_regs((uint8_t)IAM20680_USER_CTRL, &buff, 1, dev);
     // Enable gyro FIFO
     buff = 0x00;
@@ -175,29 +182,50 @@ uint8_t iam20680_init2(struct iam20680_dev *dev)
 {
     uint8_t status = 0x00;
     uint8_t buff;
-    
+  
+    // Delay 100 ms from power-up before register read/write. 
+    iam20680_delay_ms(100, dev);
+
+    // Disable I2C.
+    status |= iam20680_read_regs((uint8_t)IAM20680_USER_CTRL, &buff, 1, dev);
+    buff |= 0x10;   // I2C_IF_DIS
+    status |= iam20680_write_regs((uint8_t)IAM20680_USER_CTRL, &buff, 1, dev);
+
     // Check WHO_AM_I register.
     status = iam20680_read_regs((uint8_t)IAM20680_WHO_AM_I, &buff, 1, dev);
     dev->chip_id = buff;
     
     // Reset driver states.
     status |= iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
-    buff |= 1 << 7; // DEVICE_RESET
+    buff |= 0x80; // DEVICE_RESET
     status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
-    for (uint32_t i = 0; i < 1000000; i++);
-    buff = 0x00;
+    iam20680_delay_ms(100, dev);
+    //buff = 0x00;
     while ((buff & (0x80)) != 0x00)
     {
         iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+        iam20680_delay_ms(1, dev);
     }
 
+    // Disable I2C.
+    status |= iam20680_read_regs((uint8_t)IAM20680_USER_CTRL, &buff, 1, dev);
+    buff |= 0x10;  // I2C_IF_DIS
+    status |= iam20680_write_regs((uint8_t)IAM20680_USER_CTRL, &buff, 1, dev);
+    
     // Wake up.
     buff = 0x00;
     status |= iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
-    buff &= ~0x40;
+    buff &= ~0x40;  // SLEEP
     status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    iam20680_delay_ms(5, dev);
 
     // Set up CLKSEL.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    buff &= ~0x07;  // Clear CLKSEL
+    buff |= 0x01;   // Set CLKSEL
+    status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+
     // Disable gyro and accel.
     // Set full scale range.
     // Set bandwidth.
@@ -212,6 +240,67 @@ uint8_t iam20680_init2(struct iam20680_dev *dev)
 }
  
 /*!
+ * @brief This API must be called before other APIs. It verifies the chip ID of the sensor.
+ */
+uint8_t iam20680_init_simple(struct iam20680_dev *dev)
+{
+    uint8_t buff;
+    uint8_t status = 0x00;
+
+    // Reset driver states.
+    status |= iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    buff |= 0x80; // DEVICE_RESET
+    status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    iam20680_delay_ms(100, dev);
+    //buff = 0x00;
+    while ((buff & (0x80)) != 0x00)
+    {
+        iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+        iam20680_delay_ms(1, dev);
+    }
+
+    // Let device select best clock source.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    buff &= ~0x07;  // Clear CLKSEL
+    buff |= 0x01;   // Set CLKSEL
+    status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    
+    // Select ODR.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_SMPLRT_DIV, &buff, 1, dev);
+    buff = 0x09;   // Set ODR = 100 Hz
+    status |= iam20680_write_regs((uint8_t)IAM20680_PWR_MGMT_1, &buff, 1, dev);
+    
+    // Select FS range.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_ACCEL_CONFIG, &buff, 1, dev);
+    buff &= 0x18; 
+    buff |= 0 << 3; 
+    status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG, &buff, 1, dev);
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_GYRO_CONFIG, &buff, 1, dev);
+    buff &= 0x18; 
+    buff |= 0 << 3; 
+    status |= iam20680_write_regs((uint8_t)IAM20680_GYRO_CONFIG, &buff, 1, dev);
+    
+    // Select filter.
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_ACCEL_CONFIG2, &buff, 1, dev);
+    buff &= 0x07; 
+    buff |= 5 << 0; 
+    status |= iam20680_write_regs((uint8_t)IAM20680_ACCEL_CONFIG2, &buff, 1, dev);
+    buff = 0x00;
+    status |= iam20680_read_regs((uint8_t)IAM20680_CONFIG, &buff, 1, dev);
+    buff &= 0x07; 
+    buff |= 5 << 0; 
+    status |= iam20680_write_regs((uint8_t)IAM20680_CONFIG, &buff, 1, dev);
+    
+
+    return status;
+}
+
+/*!
  * @brief This API writes the data to the given register address of the sensor.
  */
 uint8_t iam20680_write_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, struct iam20680_dev *dev)
@@ -223,7 +312,7 @@ uint8_t iam20680_write_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, st
 }
 
 /*!
- * @brief This API reads the data from the given register address of the sensor.
+ * @brief This api reads the data from the given register address of the sensor.
  */
 uint8_t iam20680_read_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, struct iam20680_dev *dev)
 {
@@ -239,3 +328,33 @@ uint8_t iam20680_read_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, str
 	return dev->status;
 }
 
+/*!
+ * @brief This api provides and blocking ms delay function.
+ */
+uint8_t iam20680_delay_ms(uint32_t delay, struct iam20680_dev *dev)
+{
+    dev->status = 1;
+    dev->delay(delay);
+    dev->status = 0;
+
+    return dev->status;
+}
+
+/*!
+ * @brief This api gets acceleromter, temperature, and gyrometer data.
+ */
+uint8_t iam20680_get_data(struct iam20680_data *data, struct iam20680_dev *dev)
+{
+    uint8_t buff[14] = {0};     // Accel, temp, and gyro two bytes each.
+
+    dev->status = iam20680_read_regs((uint8_t)IAM20680_ACCEL_XOUT_H, &buff[0], sizeof(buff), dev);
+    data->accel_x = (buff[0] << 8) | buff[1];
+    data->accel_y = (buff[2] << 8) | buff[3]; 
+    data->accel_z = (buff[4] << 8) | buff[5]; 
+    data->temp = (buff[6] << 8) | buff[7]; 
+    data->gyro_x = (buff[8] << 8) | buff[9]; 
+    data->gyro_y = (buff[10] << 8) | buff[11]; 
+    data->gyro_z = (buff[12] << 8) | buff[13]; 
+
+    return dev->status;
+}
