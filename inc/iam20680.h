@@ -127,12 +127,28 @@ typedef uint8_t (*iam20680_read_fptr_typedef)(uint8_t reg_addr, uint8_t *reg_dat
 typedef uint8_t (*iam20680_write_fptr_typedef)(uint8_t reg_addr, uint8_t *reg_data, uint16_t len);
 
 /**
+ * @brief Timer delay function pointer. This function should be mapped to a platform-specific
+ * hardware timer. 
+ *
+ * @param[in] delay      : Desired delay in ms.
+ *
+ * @retval 0 -> Success.
+ * @retval Non-zero -> Fail.
+ */
+typedef void (*iam20680_delay_fptr_typedef)(uint32_t delay);
+
+/**
  * @brief IAM-20680 accelerometer and gyrometer data.
  */
 struct iam20680_data {
     
-    int32_t accel;  /*< Raw acclerometer data */
-    int32_t gyro;   /*< Raw gyrometer data */
+    int16_t accel_x;    /*< Acclerometer x data */
+    int16_t accel_y;    /*< Acclerometer y  data */
+    int16_t accel_z;    /*< Acclerometer z data */
+    int16_t temp;       /*< Temperature data */
+    int16_t gyro_x;     /*< Gyrometer x data */
+    int16_t gyro_y;     /*< Gyrometer y data */
+    int16_t gyro_z;     /*< Gyrometer z data */
 };
 
 /**
@@ -148,8 +164,9 @@ struct iam20680_settings {
 struct iam20680_dev {
     iam20680_read_fptr_typedef read;    /*< Read function pointer */
     iam20680_write_fptr_typedef write;  /*< Write function pointer */
+    iam20680_delay_fptr_typedef delay;  /*< Delay function pointer */
     uint8_t interface;                  /*< Interface type (I2C, SPI) */
-    struct iam20680_settings settings;         /*< Sensor settings */
+    struct iam20680_settings settings;  /*< Sensor settings */
     uint8_t status;                     /*< Returned status of read/write functions */
     uint8_t chip_id;                    /*< Chip ID */
 };
@@ -202,6 +219,22 @@ uint8_t iam20680_init(struct iam20680_dev *dev);
  */
 uint8_t iam20680_init2(struct iam20680_dev *dev);
 
+/*!
+ * \ingroup iam20680ApiInit2
+ * \page iam20680_api_iam20680_init_simple iam20680_init_simple
+ * \code
+ * uint8_t iam20680_init_simple(struct iam20680_dev *dev);
+ * \endcode
+ * @details This API must be called before other APIs. It verifies the chip ID of the sensor.
+ * 
+ * @param[in, out] dev : Structure Instance of iam20680_dev
+ * @return Result of API execution status.
+ *
+ * @retval 0 -> Success
+ * @retval Non-zero -> Fail
+ */
+uint8_t iam20680_init_simple(struct iam20680_dev *dev);
+
 /**
  * \ingroup iam20680
  * \defgroup iam20680ApiRegister Registers
@@ -250,6 +283,43 @@ uint8_t iam20680_write_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, st
  */
 uint8_t iam20680_read_regs(uint8_t reg_addr, uint8_t *reg_data, uint8_t len, struct iam20680_dev *dev);
 
+/*!
+ * \ingroup iam20680ApiRegister
+ * \page iam20680_api_iam20680_delay iam20680_delay
+ * \code
+ * uint8_t iam20680_delay(uint32_t delay, iam20680_dev *dev);
+ * \endcode
+ * @details This API provides a blocking delay with one ms resolution
+ *
+ * @param[in] delay     : Delay in ms.
+ * @param[in, out]      : Structure instance of iam20680_dev.
+ *
+ * @regurn Result of API execution status.
+ *
+ * @retval 0 -> Success.
+ * @retvan Non-zero -> Fail. 
+ *
+ */
+uint8_t iam20680_delay_ms(uint32_t delay, struct iam20680_dev *dev);
+
+/*!
+ * \ingroup iam20680ApiRegister
+ * \page iam20680_api_iam20680_get_data iam20680_delay
+ * \code
+ * uint8_t iam20680_get_data(struct iam20680_data *data, iam20680_dev *dev);
+ * \endcode
+ * @details This API gets accelerometer, temperature, and gyrometer data
+ *
+ * @param[in] data      : Data structure to store sensor readings.
+ * @param[in, out]      : Structure instance of iam20680_dev.
+ *
+ * @regurn Result of API execution status.
+ *
+ * @retval 0 -> Success.
+ * @retvan Non-zero -> Fail. 
+ *
+ */
+uint8_t iam20680_get_data(struct iam20680_data *data, struct iam20680_dev *dev);
 
 
 #ifdef __cplusplus
